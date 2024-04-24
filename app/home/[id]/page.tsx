@@ -6,6 +6,11 @@ import { Separator } from "@/components/ui/separator";
 import { CategoryShowcase } from "@/app/components/CategoryShowcase";
 import { HomeMap } from "@/app/components/HomeMap";
 import { SelectCalender } from "@/app/components/SelectCalender";
+import { ReservationSubmitButton } from "@/app/components/SubmitButtons";
+import { getKindeServerSession } from "@kinde-oss/kinde-auth-nextjs/server";
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
+import { createReservation } from "@/app/actions";
 
 async function getData(homeid: string) {
   const data = await prisma.home.findUnique({
@@ -22,6 +27,11 @@ async function getData(homeid: string) {
       categoryName: true,
       price: true,
       country: true,
+      Reservation: {
+        where: {
+          homeId: homeid,
+        },
+      },
       User: {
         select: {
           profileImage: true,
@@ -42,6 +52,8 @@ export default async function HomeRoute({
   const data = await getData(params.id);
   const { getCountryByValue } = useCountries();
   const country = getCountryByValue(data?.country as string);
+  const { getUser } = getKindeServerSession();
+  const user = await getUser();
   return (
     <div className="w-[75%] mx-auto mt-10 mb-12">
       <h1 className="font-medium text-2xl mb-5">{data?.title}</h1>
@@ -95,7 +107,19 @@ export default async function HomeRoute({
           <HomeMap locationValue={country?.value as string} />
         </div>
 
-        <SelectCalender />
+        <form action={createReservation}>
+          <input type="hidden" name="homeId" value={params.id} />
+          <input type="hidden" name="userId" value={user?.id} />
+          <SelectCalender reservation={data?.Reservation} />
+
+          {user?.id ? (
+            <ReservationSubmitButton />
+          ) : (
+            <Button className="w-full" asChild>
+              <Link href="/api/auth/login">Make a Reservation</Link>
+            </Button>
+          )}
+        </form>
       </div>
     </div>
   );
